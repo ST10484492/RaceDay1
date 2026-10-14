@@ -2,5 +2,12 @@
 {
     public class organiser
     {
+       public int OrganiserID { get; set; }
+
+        public string OrganisationName { get; set; } = string.Empty;
+
+        public string ContactEmail { get; set; } = string.Empty;
+
+        public string ContactPhone { get; set; } = string.Empty;
     }
 }
