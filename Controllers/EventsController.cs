@@ -41,5 +41,60 @@ namespace RaceDay.Controllers
 
             return Ok(events);
         }
+
+        [HttpPut("{id}")]
+        public IActionResult UpdateOrganisers(int id, organiser organiser)
+        {
+            connection db = new connection();
+
+            using (SqlConnection connection = db.GetConnection())
+            {
+                string query = @"UPDATE Organisers SET OrganisationName = @OrganisationName,
+                               ContactEmail = @ContactEmail, ContactPhone = @ContactPhone
+                               WHERE OrganiserID = @OrganiserID";
+
+                SqlCommand command = new SqlCommand(query, connection);
+
+                command.Parameters.AddWithValue("OrganiserID", id);
+                command.Parameters.AddWithValue("@OrganisationName", organiser.OrganisationName);
+                command.Parameters.AddWithValue("@ContactEmail", organiser.ContactEmail);
+                command.Parameters.AddWithValue("@ContactPhone", organiser.ContactPhone);
+
+                connection.Open();
+
+                int rowsAffected = command.ExecuteNonQuery();
+                if (rowsAffected == 0)
+                {
+                    return NotFound("Organiser not found");
+                }
+            }
+
+            return Ok("Organiser updated successfully");
+        }
+
+        [HttpDelete("{id}")]
+        public IActionResult DeleteOrganisers(int id)
+        {
+            connection db = new connection();
+
+            using (SqlConnection connection = db.GetConnection())
+            {
+                string query = "DELETE FROM Organisers WHERE OrganiserID = @OrganiserID";
+
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@OrganiserID", id);
+
+                connection.Open();
+
+                int rowsAffected = command.ExecuteNonQuery();
+                if (rowsAffected == 0)
+                {
+                    return NotFound("Organiser not found");
+                }
+
+            }
+
+            return Ok("Organiser deleted successfully");
+        }
     }
 }
