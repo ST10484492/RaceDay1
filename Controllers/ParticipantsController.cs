@@ -2,11 +2,14 @@
 using Microsoft.Data.SqlClient;
 using RaceDay1.Models;
 using RaceDay1;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RaceDay.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+
+    [Authorize(Roles = "Oraniser")]
     public class ParticipantsController : ControllerBase
     {
         [HttpGet]

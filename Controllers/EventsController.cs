@@ -1,14 +1,18 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Data.SqlClient;
 using RaceDay1.Models;
 using RaceDay1;
+using System;
+using System.Collections.Generic;
 
 namespace RaceDay.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/events")]
     public class EventsController : ControllerBase
     {
+        // GET: api/events
         [HttpGet]
         public IActionResult GetEvents()
         {
@@ -42,59 +46,141 @@ namespace RaceDay.Controllers
             return Ok(events);
         }
 
-        [HttpPut("{id}")]
-        public IActionResult UpdateOrganisers(int id, organiser organiser)
+        // GET: api/events/{eventId}
+        [HttpGet("{eventId}")]
+        public IActionResult GetEvent(int eventId)
         {
             connection db = new connection();
 
             using (SqlConnection connection = db.GetConnection())
             {
-                string query = @"UPDATE Organisers SET OrganisationName = @OrganisationName,
-                               ContactEmail = @ContactEmail, ContactPhone = @ContactPhone
-                               WHERE OrganiserID = @OrganiserID";
+                SqlCommand command = new SqlCommand(
+                    "SELECT * FROM Events WHERE EventID = @EventID",
+                    connection);
 
-                SqlCommand command = new SqlCommand(query, connection);
-
-                command.Parameters.AddWithValue("OrganiserID", id);
-                command.Parameters.AddWithValue("@OrganisationName", organiser.OrganisationName);
-                command.Parameters.AddWithValue("@ContactEmail", organiser.ContactEmail);
-                command.Parameters.AddWithValue("@ContactPhone", organiser.ContactPhone);
+                command.Parameters.AddWithValue("@EventID", eventId);
 
                 connection.Open();
+                SqlDataReader reader = command.ExecuteReader();
 
-                int rowsAffected = command.ExecuteNonQuery();
-                if (rowsAffected == 0)
+                if (!reader.Read())
                 {
-                    return NotFound("Organiser not found");
+                    reader.Close();
+                    return NotFound("Event not found.");
                 }
-            }
 
-            return Ok("Organiser updated successfully");
+                var eventItem = new RaceDay1.Models.@event
+                {
+                    EventId = Convert.ToInt32(reader["EventID"]),
+                    OrganiserId = Convert.ToInt32(reader["OrganiserID"]),
+                    EventName = reader["EventName"].ToString() ?? "",
+                    EventDate = Convert.ToDateTime(reader["EventDate"]),
+                    Location = reader["Location"].ToString() ?? "",
+                    Description = reader["Description"].ToString() ?? ""
+                };
+
+                reader.Close();
+                return Ok(eventItem);
+            }
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult DeleteOrganisers(int id)
+        // POST: api/events
+        [Authorize(Roles = "Organiser")]
+        [HttpPost]
+        public IActionResult CreateEvent(RaceDay1.Models.@event eventItem)
         {
             connection db = new connection();
 
             using (SqlConnection connection = db.GetConnection())
             {
-                string query = "DELETE FROM Organisers WHERE OrganiserID = @OrganiserID";
+                string query = @"INSERT INTO Events
+                    (OrganiserID, EventName, EventDate, Location, Description)
+                    VALUES
+                    (@OrganiserID, @EventName, @EventDate, @Location, @Description)";
 
                 SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@OrganiserID", id);
+
+                command.Parameters.AddWithValue("@OrganiserID", eventItem.OrganiserId);
+                command.Parameters.AddWithValue("@EventName", eventItem.EventName);
+                command.Parameters.AddWithValue("@EventDate", eventItem.EventDate);
+                command.Parameters.AddWithValue("@Location", eventItem.Location);
+                command.Parameters.AddWithValue("@Description",
+                    (object?)eventItem.Description ?? DBNull.Value);
+
+                connection.Open();
+                command.ExecuteNonQuery();
+            }
+
+            return Ok("Event created successfully.");
+        }
+
+        // PUT: api/events/{eventId}
+        [Authorize(Roles = "Organiser")]
+        [HttpPut("{eventId}")]
+        public IActionResult UpdateEvent(
+            int eventId, RaceDay1.Models.@event eventItem)
+        {
+            connection db = new connection();
+
+            using (SqlConnection connection = db.GetConnection())
+            {
+                string query = @"UPDATE Events
+                    SET OrganiserID = @OrganiserID,
+                        EventName = @EventName,
+                        EventDate = @EventDate,
+                        Location = @Location,
+                        Description = @Description
+                    WHERE EventID = @EventID";
+
+                SqlCommand command = new SqlCommand(query, connection);
+
+                command.Parameters.AddWithValue("@EventID", eventId);
+                command.Parameters.AddWithValue("@OrganiserID", eventItem.OrganiserId);
+                command.Parameters.AddWithValue("@EventName", eventItem.EventName);
+                command.Parameters.AddWithValue("@EventDate", eventItem.EventDate);
+                command.Parameters.AddWithValue("@Location", eventItem.Location);
+                command.Parameters.AddWithValue("@Description",
+                    (object?)eventItem.Description ?? DBNull.Value);
 
                 connection.Open();
 
                 int rowsAffected = command.ExecuteNonQuery();
+
                 if (rowsAffected == 0)
                 {
-                    return NotFound("Organiser not found");
+                    return NotFound("Event not found.");
                 }
-
             }
 
-            return Ok("Organiser deleted successfully");
+            return Ok("Event updated successfully.");
+        }
+
+        // DELETE: api/events/{eventId}
+        [Authorize(Roles = "Organiser")]
+        [HttpDelete("{eventId}")]
+        public IActionResult DeleteEvent(int eventId)
+        {
+            connection db = new connection();
+
+            using (SqlConnection connection = db.GetConnection())
+            {
+                SqlCommand command = new SqlCommand(
+                    "DELETE FROM Events WHERE EventID = @EventID",
+                    connection);
+
+                command.Parameters.AddWithValue("@EventID", eventId);
+
+                connection.Open();
+
+                int rowsAffected = command.ExecuteNonQuery();
+
+                if (rowsAffected == 0)
+                {
+                    return NotFound("Event not found.");
+                }
+            }
+
+            return Ok("Event deleted successfully.");
         }
     }
 }
