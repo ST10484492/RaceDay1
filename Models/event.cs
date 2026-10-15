@@ -2,9 +2,9 @@
 {
     public class @event
     {
-        public int EventID { get; set; }
+        public int EventId { get; set; }
 
-        public int OrganiserID { get; set; }
+        public int OrganiserId { get; set; }
 
         public string EventName { get; set; } = string.Empty;
 

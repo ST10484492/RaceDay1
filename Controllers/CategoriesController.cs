@@ -30,7 +30,7 @@ namespace RaceDay.Controllers
                 {
                     categories category = new categories
                     {
-                        CategoryID = Convert.ToInt32(reader["CategoryID"]),
+                        CategoryId = Convert.ToInt32(reader["CategoryID"]),
                         EventID = Convert.ToInt32(reader["EventID"]),
                         CategoryName = reader["CategoryName"].ToString() ?? "",
                         DistanceKM = Convert.ToDecimal(reader["DistanceKM"]),

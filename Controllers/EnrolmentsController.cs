@@ -27,9 +27,9 @@ namespace RaceDay.Controllers
                 {
                     enrolments.Add(new enrolment
                     {
-                        EnrolmentID = Convert.ToInt32(reader["EnrolmentID"]),
-                        ParticipantID = Convert.ToInt32(reader["ParticipantID"]),
-                        CategoryID = Convert.ToInt32(reader["CategoryID"]),
+                        EnrolmentId = Convert.ToInt32(reader["EnrolmentID"]),
+                        ParticipantId = Convert.ToInt32(reader["ParticipantID"]),
+                        CategoryId = Convert.ToInt32(reader["CategoryID"]),
                         Enrolmentdate = Convert.ToDateTime(reader["EnrolmentDate"]),
                         PayementStatus = reader["PaymentStatus"].ToString() ?? "",
                         RaceNumber = Convert.ToInt32(reader["RaceNumber"])

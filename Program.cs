@@ -1,4 +1,9 @@
+using Microsoft.EntityFrameworkCore;
+using RaceDay1;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<RaceDayContext>(options => options.UseSqlServer(@"Data source=(localdb)\api_both;Database=RaceDayDB;"));
 
 // Add services to the container.
 

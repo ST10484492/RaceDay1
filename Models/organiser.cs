@@ -2,7 +2,7 @@
 {
     public class organiser
     {
-       public int OrganiserID { get; set; }
+       public int OrganiserId { get; set; }
 
         public string OrganisationName { get; set; } = string.Empty;
 

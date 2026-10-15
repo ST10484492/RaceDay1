@@ -27,8 +27,8 @@ namespace RaceDay.Controllers
                 {
                     events.Add(new RaceDay1.Models.@event
                     {
-                        EventID = Convert.ToInt32(reader["EventID"]),
-                        OrganiserID = Convert.ToInt32(reader["OrganiserID"]),
+                        EventId = Convert.ToInt32(reader["EventID"]),
+                        OrganiserId = Convert.ToInt32(reader["OrganiserID"]),
                         EventName = reader["EventName"].ToString() ?? "",
                         EventDate = Convert.ToDateTime(reader["EventDate"]),
                         Location = reader["Location"].ToString() ?? "",
