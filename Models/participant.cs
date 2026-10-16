@@ -17,5 +17,8 @@ namespace RaceDay1.Models
         public string Gender { get; set; } = string.Empty;
 
         public DateTime RegistrationsDate { get; set; }
+
+        // Links race participant to login account.
+        public int? UserId { get; set; }
     }
 }

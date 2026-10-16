@@ -13,7 +13,6 @@ namespace RaceDay1.Services
             {
                 UserId = 1,
                 FirstName = "Test",
-                LastName = "Organiser",
                 Email = "organiser@raceday.com",
                 PasswordHash = passwordService.HashPassword("Organiser123!"),
                 Role = "Organiser"
