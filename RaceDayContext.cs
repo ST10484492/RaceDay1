@@ -13,6 +13,7 @@ namespace RaceDay1
         }
 
         public DbSet<Result> Results => Set<Result>();
+
         public DbSet<User> Users => Set<User>();
 
         public DbSet<organiser> Organisers => Set<organiser>();

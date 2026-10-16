@@ -9,7 +9,7 @@ namespace RaceDay.Controllers
     [ApiController]
     [Route("api/[controller]")]
 
-    [Authorize(Roles = "Oraniser")]
+    [Authorize(Roles = "Organiser")]
     public class ParticipantsController : ControllerBase
     {
         [HttpGet]

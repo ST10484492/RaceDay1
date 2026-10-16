@@ -45,10 +45,10 @@ builder.Services
     });
 
 // Application services
-builder.Services.AddScoped<RaceDay1.Services.PasswordService>();
+builder.Services.AddSingleton<RaceDay1.Services.PasswordService>();
 
-// Keep this only if UserStore is still needed by your controllers.
-// Remove it if all user data is now stored in SQL Server.
+// Keep  if UserStore is still needed by your controllers.
+// Remove if all user data is now stored in SQL Server.
 builder.Services.AddSingleton<RaceDay1.Services.UserStore>();
 
 // SQL Server connection

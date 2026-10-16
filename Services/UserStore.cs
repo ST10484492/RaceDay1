@@ -6,5 +6,18 @@ namespace RaceDay1.Services
     public class UserStore
     {
         public List<User> Users { get; set; } = new List<User>();
+
+        public UserStore(PasswordService passwordService)
+        {
+            Users.Add(new User
+            {
+                UserId = 1,
+                FirstName = "Test",
+                LastName = "Organiser",
+                Email = "organiser@raceday.com",
+                PasswordHash = passwordService.HashPassword("Organiser123!"),
+                Role = "Organiser"
+            });
+        }
     }
 }
