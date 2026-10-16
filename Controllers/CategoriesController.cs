@@ -17,31 +17,36 @@ namespace RaceDay.Controllers
         [HttpGet("events/{eventId}/categories")]
         public IActionResult GetCategories(int eventId)
         {
+            if (eventId <= 0)
+                return BadRequest("A valid event ID is required.");
+
             List<categories> categoriesList = new List<categories>();
             connection db = new connection();
 
             using (SqlConnection connection = db.GetConnection())
+            using (SqlCommand command = new SqlCommand(
+                @"SELECT CategoryID, EventID, CategoryName, DistanceKM, EntryFee
+                  FROM Categories
+                  WHERE EventID = @EventID", connection))
             {
-                string query = "SELECT * FROM Categories WHERE EventID = @EventID";
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@EventID", eventId);
+                command.Parameters.Add("@EventID", SqlDbType.Int).Value = eventId;
 
                 connection.Open();
-                SqlDataReader reader = command.ExecuteReader();
 
-                while (reader.Read())
+                using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    categoriesList.Add(new categories
+                    while (reader.Read())
                     {
-                        CategoryId = Convert.ToInt32(reader["CategoryID"]),
-                        EventID = Convert.ToInt32(reader["EventID"]),
-                        CategoryName = reader["CategoryName"].ToString() ?? "",
-                        DistanceKM = Convert.ToDecimal(reader["DistanceKM"]),
-                        EntryFee = Convert.ToDecimal(reader["EntryFee"])
-                    });
+                        categoriesList.Add(new categories
+                        {
+                            CategoryId = Convert.ToInt32(reader["CategoryID"]),
+                            EventID = Convert.ToInt32(reader["EventID"]),
+                            CategoryName = reader["CategoryName"].ToString() ?? "",
+                            DistanceKM = Convert.ToDecimal(reader["DistanceKM"]),
+                            EntryFee = Convert.ToDecimal(reader["EntryFee"])
+                        });
+                    }
                 }
-
-                reader.Close();
             }
 
             return Ok(categoriesList);
@@ -52,26 +57,65 @@ namespace RaceDay.Controllers
         [HttpPost("events/{eventId}/categories")]
         public IActionResult AddCategory(int eventId, categories category)
         {
+            if (eventId <= 0)
+                return BadRequest("A valid event ID is required.");
+
+            if (category == null ||
+                string.IsNullOrWhiteSpace(category.CategoryName))
+                return BadRequest("A category name is required.");
+
+            if (category.DistanceKM <= 0)
+                return BadRequest("Distance must be greater than zero.");
+
+            if (category.EntryFee < 0)
+                return BadRequest("Entry fee cannot be negative.");
+
             connection db = new connection();
 
             using (SqlConnection connection = db.GetConnection())
             {
-                string query = @"INSERT INTO Categories
-                    (EventID, CategoryName, DistanceKM, EntryFee)
-                    VALUES
-                    (@EventID, @CategoryName, @DistanceKM, @EntryFee)";
-
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@EventID", eventId);
-                command.Parameters.AddWithValue("@CategoryName", category.CategoryName);
-                command.Parameters.AddWithValue("@DistanceKM", category.DistanceKM);
-                command.Parameters.AddWithValue("@EntryFee", category.EntryFee);
-
                 connection.Open();
-                command.ExecuteNonQuery();
-            }
 
-            return Ok("Category added successfully.");
+                // Check that the event exists before adding its category.
+                using (SqlCommand eventCommand = new SqlCommand(
+                    "SELECT COUNT(1) FROM Events WHERE EventID = @EventID",
+                    connection))
+                {
+                    eventCommand.Parameters.Add("@EventID", SqlDbType.Int).Value =
+                        eventId;
+
+                    if (Convert.ToInt32(eventCommand.ExecuteScalar()) == 0)
+                        return NotFound("Event not found.");
+                }
+
+                string query = @"
+                    INSERT INTO Categories
+                        (EventID, CategoryName, DistanceKM, EntryFee)
+                    OUTPUT INSERTED.CategoryID
+                    VALUES
+                        (@EventID, @CategoryName, @DistanceKM, @EntryFee)";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.Add("@EventID", SqlDbType.Int).Value =
+                        eventId;
+                    command.Parameters.Add("@CategoryName", SqlDbType.NVarChar, 100)
+                        .Value = category.CategoryName.Trim();
+                    command.Parameters.Add("@DistanceKM", SqlDbType.Decimal)
+                        .Value = category.DistanceKM;
+                    command.Parameters.Add("@EntryFee", SqlDbType.Decimal)
+                        .Value = category.EntryFee;
+
+                    // Return the ID generated by SQL Server.
+                    int categoryId = Convert.ToInt32(command.ExecuteScalar());
+
+                    return Ok(new
+                    {
+                        message = "Category added successfully.",
+                        categoryId
+                    });
+                }
+            }
         }
 
         // PUT: api/categories/{categoryId}
@@ -79,30 +123,65 @@ namespace RaceDay.Controllers
         [HttpPut("categories/{categoryId}")]
         public IActionResult UpdateCategory(int categoryId, categories category)
         {
+            if (categoryId <= 0)
+                return BadRequest("A valid category ID is required.");
+
+            if (category == null ||
+                string.IsNullOrWhiteSpace(category.CategoryName))
+                return BadRequest("A category name is required.");
+
+            if (category.EventID <= 0)
+                return BadRequest("A valid event ID is required.");
+
+            if (category.DistanceKM <= 0)
+                return BadRequest("Distance must be greater than zero.");
+
+            if (category.EntryFee < 0)
+                return BadRequest("Entry fee cannot be negative.");
+
             connection db = new connection();
 
             using (SqlConnection connection = db.GetConnection())
             {
-                string query = @"UPDATE Categories
+                connection.Open();
+
+                // Ensure the category is linked to an existing event.
+                using (SqlCommand eventCommand = new SqlCommand(
+                    "SELECT COUNT(1) FROM Events WHERE EventID = @EventID",
+                    connection))
+                {
+                    eventCommand.Parameters.Add("@EventID", SqlDbType.Int).Value =
+                        category.EventID;
+
+                    if (Convert.ToInt32(eventCommand.ExecuteScalar()) == 0)
+                        return BadRequest("The specified event does not exist.");
+                }
+
+                string query = @"
+                    UPDATE Categories
                     SET EventID = @EventID,
                         CategoryName = @CategoryName,
                         DistanceKM = @DistanceKM,
                         EntryFee = @EntryFee
                     WHERE CategoryID = @CategoryID";
 
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@CategoryID", categoryId);
-                command.Parameters.AddWithValue("@EventID", category.EventID);
-                command.Parameters.AddWithValue("@CategoryName", category.CategoryName);
-                command.Parameters.AddWithValue("@DistanceKM", category.DistanceKM);
-                command.Parameters.AddWithValue("@EntryFee", category.EntryFee);
-
-                connection.Open();
-                int rowsAffected = command.ExecuteNonQuery();
-
-                if (rowsAffected == 0)
+                using (SqlCommand command = new SqlCommand(query, connection))
                 {
-                    return NotFound("Category not found.");
+                    command.Parameters.Add("@CategoryID", SqlDbType.Int).Value =
+                        categoryId;
+                    command.Parameters.Add("@EventID", SqlDbType.Int).Value =
+                        category.EventID;
+                    command.Parameters.Add("@CategoryName", SqlDbType.NVarChar, 100)
+                        .Value = category.CategoryName.Trim();
+                    command.Parameters.Add("@DistanceKM", SqlDbType.Decimal)
+                        .Value = category.DistanceKM;
+                    command.Parameters.Add("@EntryFee", SqlDbType.Decimal)
+                        .Value = category.EntryFee;
+
+                    int rowsAffected = command.ExecuteNonQuery();
+
+                    if (rowsAffected == 0)
+                        return NotFound("Category not found.");
                 }
             }
 
@@ -114,20 +193,33 @@ namespace RaceDay.Controllers
         [HttpDelete("categories/{categoryId}")]
         public IActionResult DeleteCategory(int categoryId)
         {
+            if (categoryId <= 0)
+                return BadRequest("A valid category ID is required.");
+
             connection db = new connection();
 
             using (SqlConnection connection = db.GetConnection())
+            using (SqlCommand command = new SqlCommand(
+                "DELETE FROM Categories WHERE CategoryID = @CategoryID",
+                connection))
             {
-                string query = "DELETE FROM Categories WHERE CategoryID = @CategoryID";
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@CategoryID", categoryId);
+                command.Parameters.Add("@CategoryID", SqlDbType.Int).Value =
+                    categoryId;
 
                 connection.Open();
-                int rowsAffected = command.ExecuteNonQuery();
 
-                if (rowsAffected == 0)
+                try
                 {
-                    return NotFound("Category not found.");
+                    int rowsAffected = command.ExecuteNonQuery();
+
+                    if (rowsAffected == 0)
+                        return NotFound("Category not found.");
+                }
+                catch (SqlException ex) when (ex.Number == 547)
+                {
+                    // SQL Server blocks deletion when enrolments use this category.
+                    return Conflict(
+                        "This category cannot be deleted because it is being used by enrolments.");
                 }
             }
 
