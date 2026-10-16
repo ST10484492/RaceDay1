@@ -1,8 +1,10 @@
-﻿namespace RaceDay1.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace RaceDay1.Models
 {
     public class @event
     {
-        public int EventId { get; set; }
+        [Key] public int EventId { get; set; }
 
         public int OrganiserId { get; set; }
 

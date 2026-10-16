@@ -2,11 +2,13 @@
 using Microsoft.Data.SqlClient;
 using RaceDay1;
 using RaceDay1.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RaceDay.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Organiser")]
     public class OrganisersController : ControllerBase
     {
         [HttpGet]
@@ -48,7 +50,7 @@ namespace RaceDay.Controllers
             using (SqlConnection connection = db.GetConnection())
             {
                 string query = @"INSERT INTO Organisers (OrganisationName, ContactEmail, ContactPhone)
-                               VALUES (@OrganisationName, @ContactEmail, ContactPhone)";
+                               VALUES (@OrganisationName, @ContactEmail, @ContactPhone)";
 
                 SqlCommand command = new SqlCommand(query, connection);
 

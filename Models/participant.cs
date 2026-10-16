@@ -1,8 +1,10 @@
-﻿namespace RaceDay1.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace RaceDay1.Models
 {
     public class participant
     {
-        public int ParticipantId { get; set; }
+        [Key] public int ParticipantId { get; set; }
 
         public string FirstName { get; set; } = string.Empty;
 
