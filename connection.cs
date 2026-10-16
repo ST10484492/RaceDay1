@@ -5,7 +5,7 @@ using System;
 {
     public class connection
     {
-
+        //connection string
         string connectionString = @"Data source=(localdb)\api_both;database=RaceDayDB;Initial catalog=RaceDayDB;Integrated Security=True;TrustServerCertificate=True";
 
         public SqlConnection GetConnection()
@@ -13,6 +13,7 @@ using System;
             return new SqlConnection(connectionString);
         }
 
+        //to test functions
         public bool TestConnection()
         {
             try

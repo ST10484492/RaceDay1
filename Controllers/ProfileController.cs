@@ -1,38 +1,36 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using RaceDay1.Models;
-using RaceDay1.Services;
 
-namespace RaceDay.Controllers
+namespace RaceDay1.Controllers
 {
     [ApiController]
     [Route("api/profile")]
     [Authorize]
     public class ProfileController : ControllerBase
     {
-        private readonly UserStore _userStore;
+        private readonly RaceDayContext _context;
 
-        public ProfileController(UserStore userStore)
+        public ProfileController(RaceDayContext context)
         {
-            _userStore = userStore;
+            _context = context;
         }
 
-        // GET: api/profile
         [HttpGet]
-        public IActionResult GetProfile()
+        public async Task<IActionResult> GetProfile()
         {
-            string? email = User.FindFirst(ClaimTypes.Email)?.Value;
+            string? userIdValue =
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (string.IsNullOrEmpty(email))
+            if (!int.TryParse(userIdValue, out int userId))
             {
                 return Unauthorized("User identity was not found.");
             }
 
-            User? user = _userStore.Users
-                .FirstOrDefault(u =>
-                    u.Email.Equals(email,
-                        StringComparison.OrdinalIgnoreCase));
+            User? user = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserId == userId);
 
             if (user == null)
             {
@@ -50,32 +48,38 @@ namespace RaceDay.Controllers
             });
         }
 
-        // PUT: api/profile
         [HttpPut]
-        public IActionResult UpdateProfile(
+        public async Task<IActionResult> UpdateProfile(
             [FromBody] UpdateProfileRequest request)
         {
-            string? email = User.FindFirst(ClaimTypes.Email)?.Value;
+            if (string.IsNullOrWhiteSpace(request.FirstName) ||
+                string.IsNullOrWhiteSpace(request.LastName))
+            {
+                return BadRequest("First name and last name are required.");
+            }
 
-            if (string.IsNullOrEmpty(email))
+            string? userIdValue =
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out int userId))
             {
                 return Unauthorized("User identity was not found.");
             }
 
-            User? user = _userStore.Users
-                .FirstOrDefault(u =>
-                    u.Email.Equals(email,
-                        StringComparison.OrdinalIgnoreCase));
+            User? user = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserId == userId);
 
             if (user == null)
             {
                 return NotFound("Profile not found.");
             }
 
-            user.FirstName = request.FirstName;
-            user.LastName = request.LastName;
+            user.FirstName = request.FirstName.Trim();
+            user.LastName = request.LastName.Trim();
             user.Phone = request.Phone;
             user.DateOfBirth = request.DateOfBirth;
+
+            await _context.SaveChangesAsync();
 
             return Ok("Profile updated successfully.");
         }

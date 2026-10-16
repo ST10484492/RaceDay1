@@ -2,6 +2,7 @@
 
 namespace RaceDay1.Services
 {
+    //checks password verifications
     public class PasswordService
     {
         private readonly PasswordHasher<string> _hasher = new PasswordHasher<string>();

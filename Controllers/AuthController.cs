@@ -1,17 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using RaceDay1.Models;
 using RaceDay1.Services;
-using System;
-using System.Linq;
-using System.Security.Policy;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Cryptography;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 
 namespace RaceDay1.Controllers
 {
@@ -20,12 +15,17 @@ namespace RaceDay1.Controllers
     public class AuthController : ControllerBase
     {
         private readonly PasswordService _passwordService;
-        private readonly UserStore _userStore;
+        private readonly RaceDayContext _context;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(PasswordService passwordService, UserStore userStore)
+        public AuthController(
+            PasswordService passwordService,
+            RaceDayContext context,
+            IConfiguration configuration)
         {
             _passwordService = passwordService;
-            _userStore = userStore;
+            _context = context;
+            _configuration = configuration;
         }
 
         [Authorize(Roles = "Organiser")]
@@ -47,49 +47,58 @@ namespace RaceDay1.Controllers
             public string LastName { get; set; } = string.Empty;
             public string Email { get; set; } = string.Empty;
             public string Password { get; set; } = string.Empty;
+            public string? Phone { get; set; }
+            public DateTime? DateOfBirth { get; set; }
         }
 
         [HttpPost("register")]
-        public IActionResult Register(RegisterRequest request)
+        public async Task<IActionResult> Register(
+            [FromBody] RegisterRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.FirstName) ||
                 string.IsNullOrWhiteSpace(request.LastName) ||
                 string.IsNullOrWhiteSpace(request.Email) ||
                 string.IsNullOrWhiteSpace(request.Password))
             {
-                return BadRequest("All fields are required");
+                return BadRequest("First name, last name, email and password are required.");
             }
 
-            bool emailExists = _userStore.Users.Any(user => user.Email.Equals(request.Email.Trim(),
-                StringComparison.OrdinalIgnoreCase));
+            string email = request.Email.Trim();
+
+            bool emailExists = await _context.Users
+                .AnyAsync(user => user.Email == email);
 
             if (emailExists)
             {
-                return Conflict("An account with this email already exists");
+                return Conflict("An account with this email already exists.");
             }
 
             var user = new User
             {
-
                 FirstName = request.FirstName.Trim(),
                 LastName = request.LastName.Trim(),
-                Email = request.Email.Trim(),
+                Email = email,
                 PasswordHash = _passwordService.HashPassword(request.Password),
-                Role = "Participant"
+                Role = "Participant",
+                Phone = request.Phone,
+                DateOfBirth = request.DateOfBirth
             };
 
-            _userStore.Users.Add(user);
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
             return Ok(new
             {
                 Message = "Registration successful",
+                user.UserId,
                 user.Email,
                 user.Role
             });
         }
 
         [HttpPost("login")]
-        public IActionResult Login(LoginRequest request)
+        public async Task<IActionResult> Login(
+            [FromBody] LoginRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Email) ||
                 string.IsNullOrWhiteSpace(request.Password))
@@ -97,10 +106,10 @@ namespace RaceDay1.Controllers
                 return BadRequest("Email and password are required.");
             }
 
-            var user = _userStore.Users.FirstOrDefault(
-                u => u.Email.Equals(
-                    request.Email.Trim(),
-                    StringComparison.OrdinalIgnoreCase));
+            string email = request.Email.Trim();
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == email);
 
             if (user == null)
             {
@@ -129,23 +138,29 @@ namespace RaceDay1.Controllers
 
         private string GenerateJwtToken(User user)
         {
-            var key = Encoding.UTF8.GetBytes(
-                "RaceDay1-Development-Key-Change-This-123456789");
+            string jwtKey = _configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("JWT key is missing.");
+
+            string issuer = _configuration["Jwt:Issuer"]
+                ?? throw new InvalidOperationException("JWT issuer is missing.");
+
+            string audience = _configuration["Jwt:Audience"]
+                ?? throw new InvalidOperationException("JWT audience is missing.");
 
             var claims = new[]
             {
-        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-        new Claim(ClaimTypes.Email, user.Email),
-        new Claim(ClaimTypes.Role, user.Role)
-    };
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
 
             var credentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
                 SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: "RaceDay1",
-                audience: "RaceDay1Users",
+                issuer: issuer,
+                audience: audience,
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(1),
                 signingCredentials: credentials);
