@@ -6,6 +6,15 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// JWT configuration
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("JWT key is missing.");
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"]
+    ?? throw new InvalidOperationException("JWT issuer is missing.");
+
+var jwtAudience = builder.Configuration["Jwt:Audience"]
+    ?? throw new InvalidOperationException("JWT audience is missing.");
 
 builder.Services
     .AddAuthentication(options =>
