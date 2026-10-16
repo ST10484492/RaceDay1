@@ -1,4 +1,3 @@
-
 using Microsoft.EntityFrameworkCore;
 using RaceDay1;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

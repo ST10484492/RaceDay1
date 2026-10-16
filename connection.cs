@@ -6,7 +6,7 @@ using System;
     public class connection
     {
 
-        string connectionString = @"Data source=(localdb)\api_both;database=RaceDayDB;";
+        string connectionString = @"Data source=(localdb)\api_both;database=RaceDayDB;Initial catalog=RaceDayDB;Integrated Security=True;TrustServerCertificate=True";
 
         public SqlConnection GetConnection()
         {
