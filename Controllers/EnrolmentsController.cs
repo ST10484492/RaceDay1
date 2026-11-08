@@ -39,7 +39,7 @@ namespace RaceDay1.Controllers
             return Convert.ToInt32(result);
         }
 
-        // GET: api/enrolments
+        // GET
         // Returns only the logged-in participant's enrolments.
         [HttpGet]
         public IActionResult GetEnrolments()
@@ -95,7 +95,7 @@ namespace RaceDay1.Controllers
             return Ok(enrolments);
         }
 
-        // GET: api/enrolments/1
+        // GET
         // Returns an enrolment only if it belongs to this participant.
         [HttpGet("{enrolmentId:int}")]
         public IActionResult GetEnrolment(int enrolmentId)
@@ -141,7 +141,7 @@ namespace RaceDay1.Controllers
             return Ok(enrolment);
         }
 
-        // POST: api/enrolments
+        // POST:
         // The participant ID comes from the token, never from the request.
         [HttpPost]
         public IActionResult CreateEnrolment([FromBody] CreateEnrolmentRequest request)
