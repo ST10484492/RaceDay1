@@ -58,11 +58,16 @@ namespace RaceDay1.Controllers
             var enrolments = new List<object>();
 
             using var cmd = new SqlCommand(
-                @"SELECT EnrolmentID, ParticipantID, CategoryID,
-                         EnrolmentDate, PaymentStatus, RaceNumber
-                  FROM dbo.Enrolments
-                  WHERE ParticipantID = @ParticipantID
-                  ORDER BY EnrolmentID", conn);
+                // PART 3: joined to Categories and Events so the web app can show
+                // the event name, date and category instead of bare IDs.
+                @"SELECT e.EnrolmentID, e.ParticipantID, e.CategoryID,
+                         e.EnrolmentDate, e.PaymentStatus, e.RaceNumber,
+                         c.CategoryName, ev.EventID, ev.EventName, ev.EventDate
+                  FROM dbo.Enrolments e
+                  JOIN dbo.Categories c ON c.CategoryID = e.CategoryID
+                  JOIN dbo.Events ev    ON ev.EventID = c.EventID
+                  WHERE e.ParticipantID = @ParticipantID
+                  ORDER BY ev.EventDate", conn);
 
             cmd.Parameters.AddWithValue("@ParticipantID", participantId.Value);
 
@@ -79,7 +84,11 @@ namespace RaceDay1.Controllers
                     PaymentStatus = reader.GetString(4),
                     RaceNumber = reader.IsDBNull(5)
                         ? (int?)null
-                        : reader.GetInt32(5)
+                        : reader.GetInt32(5),
+                    CategoryName = reader.GetString(6),
+                    EventId = reader.GetInt32(7),
+                    EventName = reader.GetString(8),
+                    EventDate = reader.GetDateTime(9)
                 });
             }
 
@@ -152,9 +161,14 @@ namespace RaceDay1.Controllers
                 return NotFound("Participant profile not found.");
 
             using var cmd = new SqlCommand(
-                @"INSERT INTO dbo.Enrolments (ParticipantID, CategoryID)
+                // PART 3 FIX: the table has UNIQUE (CategoryID, RaceNumber), and SQL Server
+                // allows only ONE NULL per category, so the 2nd enrolment in a category
+                // used to fail. We now give each enrolment the next free race number.
+                @"INSERT INTO dbo.Enrolments (ParticipantID, CategoryID, RaceNumber)
                   OUTPUT INSERTED.EnrolmentID
-                  VALUES (@ParticipantID, @CategoryID)", conn);
+                  VALUES (@ParticipantID, @CategoryID,
+                          (SELECT ISNULL(MAX(RaceNumber), 0) + 1
+                           FROM dbo.Enrolments WHERE CategoryID = @CategoryID))", conn);
 
             cmd.Parameters.AddWithValue("@ParticipantID", participantId.Value);
             cmd.Parameters.AddWithValue("@CategoryID", request.CategoryId);
