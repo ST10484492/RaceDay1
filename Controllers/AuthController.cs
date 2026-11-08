@@ -26,13 +26,13 @@ namespace RaceDay1.Controllers
             _configuration = configuration;
         }
 
-        // Read the same database connection string used by Program.cs.
+        //reads the same database connection string used by Program.cs.
         private string ConnectionString =>
             _configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
                 "DefaultConnection is missing from appsettings.json.");
 
-        // Simple public endpoint to check that the controller is running.
+        //public endpoint to check that the controller is running.
         [HttpGet("test")]
         public IActionResult Test()
         {
@@ -248,7 +248,7 @@ namespace RaceDay1.Controllers
 
             // Retrieve the account using its email address.
             const string loginSql = @"
-                SELECT UserId, Email, PasswordHash, Role
+                SELECT UserId, FirstName, Email, PasswordHash, Role
                 FROM dbo.Users
                 WHERE Email = @Email;";
 
@@ -256,6 +256,7 @@ namespace RaceDay1.Controllers
             string storedEmail;
             string passwordHash;
             string role;
+            string firstName;
 
             using (var command = new SqlCommand(loginSql, connection))
             {
@@ -270,6 +271,7 @@ namespace RaceDay1.Controllers
                 }
 
                 userId = reader.GetInt32(reader.GetOrdinal("UserId"));
+                firstName = reader.GetString(reader.GetOrdinal("FirstName"));
                 storedEmail = reader.GetString(reader.GetOrdinal("Email"));
                 passwordHash = reader.GetString(
                     reader.GetOrdinal("PasswordHash"));
@@ -295,6 +297,7 @@ namespace RaceDay1.Controllers
             {
                 Token = token,
                 Email = storedEmail,
+                Name = firstName,
                 Role = role,
                 Message = "Login successful."
             });
