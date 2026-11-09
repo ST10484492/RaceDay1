@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Security.Claims;
+using RaceDay1.Services;
 
 namespace RaceDay1.Controllers
 {
@@ -13,9 +14,13 @@ namespace RaceDay1.Controllers
     {
         private readonly IConfiguration _configuration;
 
-        public ProfileController(IConfiguration configuration)
+        // PART 3: Azure Blob helper for the profile picture.
+        private readonly BlobStorageService _blobs;
+
+        public ProfileController(IConfiguration configuration, BlobStorageService blobs)
         {
             _configuration = configuration;
+            _blobs = blobs;
         }
 
         // Use the same database connection configured in appsettings.json.
@@ -46,7 +51,8 @@ namespace RaceDay1.Controllers
                     u.Email,
                     u.Role,
                     u.DateOfBirth,
-                    p.Gender
+                    p.Gender,
+                    u.ProfilePictureUrl
                 FROM dbo.Users AS u
                 LEFT JOIN dbo.Participants AS p
                     ON p.UserId = u.UserId
@@ -78,8 +84,37 @@ namespace RaceDay1.Controllers
                 DateOfBirth = reader["DateOfBirth"] == DBNull.Value
                     ? null : reader["DateOfBirth"],
                 Gender = reader["Gender"] == DBNull.Value
-                    ? null : reader["Gender"]
+                    ? null : reader["Gender"],
+                // PART 3: URL of the picture stored in Azure Blob Storage
+                ProfilePictureUrl = reader["ProfilePictureUrl"] == DBNull.Value
+                    ? null : reader["ProfilePictureUrl"]
             });
+        }
+
+        // POST: api/profile/picture
+        // PART 3: upload/replace the profile picture (multipart field name "picture").
+        [HttpPost("picture")]
+        public async Task<IActionResult> UploadPicture([FromForm] IFormFile picture)
+        {
+            if (!TryGetUserId(out int userId))
+                return Unauthorized("Invalid user token.");
+
+            if (!BlobStorageService.IsValidImage(picture))
+                return BadRequest("Please upload an image smaller than 5MB.");
+
+            // Image goes to Azure Blob Storage; only the URL goes in SQL.
+            string url = await _blobs.UploadImageAsync(picture, "profiles");
+
+            await using var connection = new SqlConnection(ConnectionString);
+            await connection.OpenAsync();
+
+            using var command = new SqlCommand(
+                "UPDATE dbo.Users SET ProfilePictureUrl = @Url WHERE UserId = @UserId;", connection);
+            command.Parameters.Add("@Url", SqlDbType.NVarChar, 500).Value = url;
+            command.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
+            await command.ExecuteNonQueryAsync();
+
+            return Ok(new { profilePictureUrl = url });
         }
 
         // Fields a user is allowed to update in their own profile.
