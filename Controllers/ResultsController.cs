@@ -98,7 +98,7 @@ namespace RaceDay1.Controllers
         }
 
         // POST: api/events/{eventId}/results
-        // PART 3: Organiser publishes finish times and positions for many participants at once.
+        // PART 3: organiser publishes finish times and positions for many participants at once.
         // Existing results are updated, new ones are inserted.
         [Authorize(Roles = "Organiser")]
         [HttpPost("~/api/events/{eventId:int}/results")]
