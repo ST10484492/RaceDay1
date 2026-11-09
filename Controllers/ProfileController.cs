@@ -14,18 +14,18 @@ namespace RaceDay1.Controllers
     {
         private readonly IConfiguration _configuration;
 
-        // PART 3: Azure Blob helper for the profile picture.
-        private readonly BlobStorageService _blobs;
+        // PART 3: image-saving helper for the profile picture.
+        private readonly ImageStorageService _images;
 
-        public ProfileController(IConfiguration configuration, BlobStorageService blobs)
+        public ProfileController(IConfiguration configuration, ImageStorageService images)
         {
             _configuration = configuration;
-            _blobs = blobs;
+            _images = images;
         }
 
         // Use the same database connection configured in appsettings.json.
         private string ConnectionString =>
-            _configuration.GetConnectionString("DefaultConnection")
+            _configuration.GetConnectionString("Data source=(localdb)\\api_both;Initial Catalog=RaceDayDB;Integrated Security=True;TrustServiceCertificate=True")
             ?? throw new InvalidOperationException(
                 "DefaultConnection is missing from appsettings.json.");
 
@@ -85,13 +85,13 @@ namespace RaceDay1.Controllers
                     ? null : reader["DateOfBirth"],
                 Gender = reader["Gender"] == DBNull.Value
                     ? null : reader["Gender"],
-                // PART 3: URL of the picture stored in Azure Blob Storage
+                // PART 3: URL of the saved picture
                 ProfilePictureUrl = reader["ProfilePictureUrl"] == DBNull.Value
                     ? null : reader["ProfilePictureUrl"]
             });
         }
 
-        // POST
+        // POST: api/profile/picture
         // PART 3: upload/replace the profile picture (multipart field name "picture").
         [HttpPost("picture")]
         public async Task<IActionResult> UploadPicture([FromForm] IFormFile picture)
@@ -99,11 +99,11 @@ namespace RaceDay1.Controllers
             if (!TryGetUserId(out int userId))
                 return Unauthorized("Invalid user token.");
 
-            if (!BlobStorageService.IsValidImage(picture))
+            if (!ImageStorageService.IsValidImage(picture))
                 return BadRequest("Please upload an image smaller than 5MB.");
 
-            // Image goes to Azure Blob Storage; only the URL goes in SQL.
-            string url = await _blobs.UploadImageAsync(picture, "profiles");
+            // Image is saved in wwwroot/uploads; only the URL goes in SQL.
+            string url = await _images.SaveImageAsync(picture, "profiles");
 
             await using var connection = new SqlConnection(ConnectionString);
             await connection.OpenAsync();
