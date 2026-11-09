@@ -1,7 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
 
-    namespace RaceDay1
+namespace RaceDay1
 {
     public class connection
     {

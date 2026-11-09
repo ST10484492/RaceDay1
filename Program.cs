@@ -49,6 +49,9 @@ builder.Services.AddSingleton<RaceDay1.Services.PasswordService>();
 
 builder.Services.AddSingleton<RaceDay1.Services.UserStore>();
 
+// PART 3: Azure Blob Storage helper used by the image-upload endpoints
+builder.Services.AddSingleton<RaceDay1.Services.BlobStorageService>();
+
 // SQL Server connection
 var connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection")
