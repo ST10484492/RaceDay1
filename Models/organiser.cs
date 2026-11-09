@@ -4,7 +4,7 @@ namespace RaceDay1.Models
 {
     public class organiser
     {
-       [Key] public int OrganiserId { get; set; }
+        [Key] public int OrganiserId { get; set; }
 
         public string OrganisationName { get; set; } = string.Empty;
 
