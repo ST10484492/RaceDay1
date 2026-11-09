@@ -49,8 +49,9 @@ builder.Services.AddSingleton<RaceDay1.Services.PasswordService>();
 
 builder.Services.AddSingleton<RaceDay1.Services.UserStore>();
 
-// PART 3: Azure Blob Storage helper used by the image-upload endpoints
-builder.Services.AddSingleton<RaceDay1.Services.BlobStorageService>();
+// PART 3: saves uploaded banner / profile images in wwwroot/uploads
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<RaceDay1.Services.ImageStorageService>();
 
 // SQL Server connection
 var connectionString =
@@ -105,6 +106,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// PART 3: lets the browser load the uploaded images from /uploads/...
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
