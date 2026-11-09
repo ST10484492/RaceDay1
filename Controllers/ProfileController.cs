@@ -91,7 +91,7 @@ namespace RaceDay1.Controllers
             });
         }
 
-        // POST: api/profile/picture
+        // POST
         // PART 3: upload/replace the profile picture (multipart field name "picture").
         [HttpPost("picture")]
         public async Task<IActionResult> UploadPicture([FromForm] IFormFile picture)

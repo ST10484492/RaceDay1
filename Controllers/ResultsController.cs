@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using RaceDay1.Models;
-using System;
-using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace RaceDay1.Controllers
 {
@@ -28,6 +28,122 @@ namespace RaceDay1.Controllers
                 .ToListAsync();
 
             return Ok(results);
+        }
+
+        // GET: api/Results/mine
+        // PART 3: the logged-in participant's race history, including
+        // their finishing position and how many people finished that event.
+        [Authorize(Roles = "Participant")]
+        [HttpGet("mine")]
+        public async Task<IActionResult> GetMyResults()
+        {
+            // Find this user's ParticipantID from the JWT (same approach as EnrolmentsController).
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int userId))
+                return Unauthorized();
+
+            await using var conn = new connection().GetConnection();
+            await conn.OpenAsync();
+
+            int participantId;
+            using (var pc = new SqlCommand("SELECT ParticipantID FROM dbo.Participants WHERE UserId = @U", conn))
+            {
+                pc.Parameters.AddWithValue("@U", userId);
+                object? o = await pc.ExecuteScalarAsync();
+                if (o == null) return NotFound("Participant profile not found.");
+                participantId = Convert.ToInt32(o);
+            }
+
+            // TotalFinishers = number of results with a position recorded for the same event.
+            const string sql = @"
+                SELECT ev.EventName, ev.EventDate, c.CategoryName,
+                       r.FinishTime, r.Position,
+                       (SELECT COUNT(*)
+                        FROM dbo.Results r2
+                        JOIN dbo.Enrolments e2 ON e2.EnrolmentID = r2.EnrolmentID
+                        JOIN dbo.Categories c2 ON c2.CategoryID = e2.CategoryID
+                        WHERE c2.EventID = ev.EventID AND r2.Position IS NOT NULL) AS TotalFinishers
+                FROM dbo.Results r
+                JOIN dbo.Enrolments e ON e.EnrolmentID = r.EnrolmentID
+                JOIN dbo.Categories c ON c.CategoryID = e.CategoryID
+                JOIN dbo.Events ev    ON ev.EventID = c.EventID
+                WHERE e.ParticipantID = @P
+                ORDER BY ev.EventDate DESC";
+
+            var list = new List<object>();
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@P", participantId);
+            using var rd = await cmd.ExecuteReaderAsync();
+            while (await rd.ReadAsync())
+            {
+                list.Add(new
+                {
+                    EventName = rd.GetString(0),
+                    EventDate = rd.GetDateTime(1),
+                    CategoryName = rd.GetString(2),
+                    // TimeSpan -> text such as "00:45:12" so the web app can show it directly
+                    FinishTime = rd.IsDBNull(3) ? "" : rd.GetTimeSpan(3).ToString(@"hh\:mm\:ss"),
+                    Position = rd.IsDBNull(4) ? 0 : rd.GetInt32(4),
+                    TotalFinishers = rd.GetInt32(5)
+                });
+            }
+            return Ok(list);
+        }
+
+        // One line of the organiser's results form.
+        public class ResultEntry
+        {
+            public int EnrolmentId { get; set; }
+            public string? FinishTime { get; set; }   // "hh:mm:ss"
+            public int? Position { get; set; }
+        }
+
+        // POST: api/events/{eventId}/results
+        // PART 3: Organiser publishes finish times and positions for many participants at once.
+        // Existing results are updated, new ones are inserted.
+        [Authorize(Roles = "Organiser")]
+        [HttpPost("~/api/events/{eventId:int}/results")]
+        public async Task<IActionResult> PublishResults(int eventId, [FromBody] List<ResultEntry> entries)
+        {
+            if (entries == null || entries.Count == 0)
+                return BadRequest("No results were supplied.");
+
+            // Only accept enrolments that really belong to this event.
+            var validIds = await (
+                from en in _context.Enrolments
+                join c in _context.Categories on en.CategoryId equals c.CategoryId
+                where c.EventID == eventId
+                select en.EnrolmentId).ToListAsync();
+
+            foreach (var entry in entries)
+            {
+                if (!validIds.Contains(entry.EnrolmentId))
+                    return BadRequest("One of the enrolments does not belong to this event.");
+
+                if (!TimeSpan.TryParse(entry.FinishTime, out TimeSpan time))
+                    return BadRequest("Finish times must look like 00:45:12.");
+
+                var existing = await _context.Results
+                    .FirstOrDefaultAsync(r => r.EnrolmentId == entry.EnrolmentId);
+
+                if (existing == null)
+                {
+                    _context.Results.Add(new Result
+                    {
+                        EnrolmentId = entry.EnrolmentId,
+                        FinishTime = time,
+                        Position = entry.Position,
+                        RecordedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    existing.FinishTime = time;
+                    existing.Position = entry.Position;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok("Results published.");
         }
 
         // GET: api/Results/5
