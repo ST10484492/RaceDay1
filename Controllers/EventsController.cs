@@ -14,12 +14,12 @@ namespace RaceDay.Controllers
     [Route("api/events")]
     public class EventsController : ControllerBase
     {
-        // PART 3: Azure Blob helper, injected by ASP.NET Core (see Program.cs).
-        private readonly BlobStorageService _blobs;
+        // PART 3: image-saving helper, injected by ASP.NET Core (see Program.cs).
+        private readonly ImageStorageService _images;
 
-        public EventsController(BlobStorageService blobs)
+        public EventsController(ImageStorageService images)
         {
-            _blobs = blobs;
+            _images = images;
         }
 
         // Columns returned for every event (kept in one place so queries stay consistent).
@@ -255,15 +255,15 @@ namespace RaceDay.Controllers
 
         // POST: api/events/{eventId}/banner
         // PART 3: Organiser uploads a banner image (multipart/form-data, field name "banner").
-        // The file is stored in Azure Blob Storage; only its URL is saved in SQL.
+        // The file is saved on the API server (wwwroot/uploads); only its URL is saved in SQL.
         [Authorize(Roles = "Organiser")]
         [HttpPost("{eventId:int}/banner")]
         public async Task<IActionResult> UploadBanner(int eventId, [FromForm] IFormFile banner)
         {
-            if (!BlobStorageService.IsValidImage(banner))
+            if (!ImageStorageService.IsValidImage(banner))
                 return BadRequest("Please upload an image smaller than 5MB.");
 
-            string url = await _blobs.UploadImageAsync(banner, "banners");
+            string url = await _images.SaveImageAsync(banner, "banners");
 
             connection db = new connection();
             await using SqlConnection conn = db.GetConnection();
