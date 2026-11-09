@@ -4,7 +4,7 @@ namespace RaceDay1.Models
 {
     public class categories
     {
-        [Key] public int CategoryId { get; set;  }
+        [Key] public int CategoryId { get; set; }
 
         public int EventID { get; set; }
 
