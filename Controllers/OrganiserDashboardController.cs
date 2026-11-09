@@ -5,14 +5,16 @@ using RaceDay1;
 using System.Security.Claims;
 
 namespace RaceDay1.Controllers
-{
+{//start of namespace
+
     // PART 3: data for the Organiser dashboard page.
     // Route is "api/organiser" (singular) so it does not clash with OrganisersController.
     [ApiController]
     [Route("api/organiser")]
     [Authorize(Roles = "Organiser")]
     public class OrganiserDashboardController : ControllerBase
-    {
+    {//start of class
+
         // GET: api/organiser/dashboard
         // Total events, total enrolments and a per-event summary for the logged-in organiser.
         [HttpGet("dashboard")]
@@ -60,5 +62,5 @@ namespace RaceDay1.Controllers
 
             return Ok(new { TotalEvents = events.Count, TotalEnrolments = totalEnrolments, Events = events });
         }
-    }
-}
+    }//end of class
+}//end of namespace

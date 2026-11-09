@@ -110,7 +110,7 @@ namespace RaceDay.Controllers
         }
 
         [HttpDelete("{id}")]
-        public IActionResult DeleteParticipant (int id)
+        public IActionResult DeleteParticipant(int id)
         {
             connection db = new connection();
 
