@@ -25,9 +25,9 @@ namespace RaceDay1.Controllers
 
         // Use the same database connection configured in appsettings.json.
         private string ConnectionString =>
-            _configuration.GetConnectionString("Data source=(localdb)\\api_both;Initial Catalog=RaceDayDB;Integrated Security=True;TrustServiceCertificate=True")
-            ?? throw new InvalidOperationException(
-                "DefaultConnection is missing from appsettings.json.");
+    _configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException(
+        "DefaultConnection is missing from appsettings.json.");
 
         // Get the ID of the account from the user's JWT token.
         private bool TryGetUserId(out int userId)
@@ -94,7 +94,7 @@ namespace RaceDay1.Controllers
         // POST: api/profile/picture
         // PART 3: upload/replace the profile picture (multipart field name "picture").
         [HttpPost("picture")]
-        public async Task<IActionResult> UploadPicture([FromForm] IFormFile picture)
+        public async Task<IActionResult> UploadPicture(IFormFile picture)
         {
             if (!TryGetUserId(out int userId))
                 return Unauthorized("Invalid user token.");

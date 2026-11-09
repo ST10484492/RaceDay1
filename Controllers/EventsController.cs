@@ -258,7 +258,7 @@ namespace RaceDay.Controllers
         // The file is saved on the API server (wwwroot/uploads); only its URL is saved in SQL.
         [Authorize(Roles = "Organiser")]
         [HttpPost("{eventId:int}/banner")]
-        public async Task<IActionResult> UploadBanner(int eventId, [FromForm] IFormFile banner)
+        public async Task<IActionResult> UploadBanner(int eventId, IFormFile banner)
         {
             if (!ImageStorageService.IsValidImage(banner))
                 return BadRequest("Please upload an image smaller than 5MB.");
